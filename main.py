@@ -5,15 +5,27 @@ from api.matches import matches_bp
 # Инициализация Flask приложения
 app = Flask(__name__)
 
-# Конфигурация Swagger для актуальной версии
+# Упрощенная конфигурация Swagger
 app.config['SWAGGER'] = {
     'title': 'Football Matches API',
     'uiversion': 3,
-    'specs_route': '/apidocs/'
+    'specs_route': '/apidocs/',
+    'specs': [
+        {
+            'endpoint': 'apispec',
+            'route': '/apispec_1.json',
+            'rule_filter': lambda rule: True,
+            'model_filter': lambda tag: True,
+        }
+    ]
 }
+
+# Регистрируем Blueprint ДО инициализации Swagger
+app.register_blueprint(matches_bp)
+
+# Инициализация Swagger после регистрации всех Blueprint
 swagger = Swagger(app)
 
-# Создаем основной Blueprint для информации о сервисе
 @app.route('/')
 def index():
     """
@@ -31,6 +43,11 @@ def index():
               type: string
             description:
               type: string
+        examples:
+          application/json:
+            service: "Football Matches API"
+            version: "2.0"
+            description: "Веб-сервис для управления футбольными матчами"
     """
     return jsonify({
         "service": "Football Matches API",
@@ -60,6 +77,9 @@ def info(about):
         description: Информация о сервисе
         schema:
           type: object
+        examples:
+          application/json:
+            version: "2.0"
     """
     all_info = {
         'all': {
@@ -80,9 +100,5 @@ def info(about):
     
     return jsonify(result)
 
-# Регистрируем Blueprint для матчей
-app.register_blueprint(matches_bp)
-
-# Запуск приложения
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5001)

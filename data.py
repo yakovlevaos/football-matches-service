@@ -35,66 +35,55 @@ matches = [
     }
 ]
 
-def get_all_matches(sort_by=None):
-    """Получить все матчи с возможностью сортировки"""
-    if sort_by and sort_by in matches[0].keys():
-        return sorted(matches, key=lambda x: x[sort_by])
+def get_all_matches(sort_field=None):
+    if sort_field:
+        return sorted(matches, key=lambda x: x.get(sort_field))
     return matches
 
 def get_match_by_id(match_id):
-    """Найти матч по ID"""
-    for match in matches:
-        if match["id"] == match_id:
-            return match
+    return next((m for m in matches if m['id'] == match_id), None)
+
+def add_match(data):
+    new_id = max(m['id'] for m in matches) + 1 if matches else 1
+    data['id'] = new_id
+    matches.append(data)
+    return data
+
+def update_match(match_id, data):
+    match = get_match_by_id(match_id)
+    if match:
+        index = matches.index(match)
+        matches[index] = data
+        return matches[index]
     return None
 
-def add_match(match_data):
-    """Добавить новый матч"""
-    new_id = max(match["id"] for match in matches) + 1
-    match_data["id"] = new_id
-    matches.append(match_data)
-    return match_data
-
-def update_match(match_id, match_data):
-    """Полностью заменить запись матча"""
-    for i, match in enumerate(matches):
-        if match["id"] == match_id:
-            match_data["id"] = match_id
-            matches[i] = match_data
-            return match_data
-    return None
-
-def patch_match(match_id, fields):
-    """Частично обновить запись матча (PATCH)"""
+def partial_update_match(match_id, fields):
     match = get_match_by_id(match_id)
     if not match:
         return None
-
-    # Обновляем только переданные поля
     for key, value in fields.items():
         if key in match:
             match[key] = value
-
-    return match
+    return update_match(match_id, match)
 
 def delete_match(match_id):
-    """Удалить матч"""
-    global matches
-    matches = [match for match in matches if match["id"] != match_id]
-    return True
+    match = get_match_by_id(match_id)
+    if match:
+        matches.remove(match)
+        return True
+    return False
 
 def get_statistics():
-    """Получить статистику по числовым полям"""
-    numeric_fields = ["home_score", "away_score", "spectators"]
+    if not matches:
+        return {}
     stats = {}
-    
-    for field in numeric_fields:
-        values = [match[field] for match in matches]
+    num_fields = ['home_score', 'away_score', 'spectators']
+    for field in num_fields:
+        values = [m[field] for m in matches if field in m]
         stats[field] = {
-            "min": min(values),
-            "max": max(values),
-            "average": round(sum(values) / len(values), 2),
-            "sum": sum(values)
+            'min': min(values),
+            'max': max(values),
+            'average': sum(values) / len(values),
+            'sum': sum(values)
         }
-    
     return stats
