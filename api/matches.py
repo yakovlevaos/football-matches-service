@@ -5,7 +5,8 @@ from data import (
     add_match, 
     update_match, 
     delete_match, 
-    get_statistics
+    get_statistics,
+    patch_match
 )
 
 # Создаем Blueprint для матчей
@@ -26,78 +27,20 @@ def get_matches():
     responses:
       200:
         description: Список матчей
-        schema:
-          type: array
-          items:
-            type: object
-            properties:
-              id:
-                type: integer
-                example: 1
-              home_team:
-                type: string
-                example: "Спартак"
-              away_team:
-                type: string
-                example: "Зенит"
-              home_score:
-                type: integer
-                example: 2
-              away_score:
-                type: integer
-                example: 1
-              date:
-                type: string
-                example: "2024-05-15"
-              spectators:
-                type: integer
-                example: 45000
-              stadium:
-                type: string
-                example: "Открытие Арена"
-              tournament:
-                type: string
-                example: "Премьер-Лига"
     """
     sort_field = request.args.get('sort')
     matches = get_all_matches(sort_field)
     return jsonify(matches)
+
 
 @matches_bp.route('/matches/<int:match_id>', methods=['GET'])
 def get_match(match_id):
     """
     Получить матч по ID
     ---
-    parameters:
-      - name: match_id
-        in: path
-        type: integer
-        required: true
-        example: 1
     responses:
       200:
         description: Данные матча
-        schema:
-          type: object
-          properties:
-            id:
-              type: integer
-            home_team:
-              type: string
-            away_team:
-              type: string
-            home_score:
-              type: integer
-            away_score:
-              type: integer
-            date:
-              type: string
-            spectators:
-              type: integer
-            stadium:
-              type: string
-            tournament:
-              type: string
       404:
         description: Матч не найден
     """
@@ -106,56 +49,17 @@ def get_match(match_id):
         return jsonify(match)
     return jsonify({"error": "Матч не найден"}), 404
 
+
 @matches_bp.route('/matches', methods=['POST'])
 def create_match():
     """
     Добавить новый матч
     ---
-    parameters:
-      - in: body
-        name: body
-        required: true
-        schema:
-          type: object
-          required:
-            - home_team
-            - away_team
-            - home_score
-            - away_score
-            - date
-            - spectators
-            - stadium
-            - tournament
-          properties:
-            home_team:
-              type: string
-              example: "Динамо"
-            away_team:
-              type: string
-              example: "Рубин"
-            home_score:
-              type: integer
-              example: 1
-            away_score:
-              type: integer
-              example: 1
-            date:
-              type: string
-              example: "2024-05-16"
-            spectators:
-              type: integer
-              example: 15000
-            stadium:
-              type: string
-              example: "ВТБ Арена"
-            tournament:
-              type: string
-              example: "Премьер-Лига"
     responses:
       201:
-        description: Матч успешно создан
+        description: Матч создан
       400:
-        description: Неверные данные
+        description: Ошибка данных
     """
     data = request.get_json()
     
@@ -168,44 +72,15 @@ def create_match():
     new_match = add_match(data)
     return jsonify(new_match), 201
 
+
 @matches_bp.route('/matches/<int:match_id>', methods=['PUT'])
 def modify_match(match_id):
     """
-    Обновить данные матча
+    Полностью обновить данные матча
     ---
-    parameters:
-      - name: match_id
-        in: path
-        type: integer
-        required: true
-        example: 1
-      - in: body
-        name: body
-        required: true
-        schema:
-          type: object
-          properties:
-            home_team:
-              type: string
-            away_team:
-              type: string
-            home_score:
-              type: integer
-            away_score:
-              type: integer
-            date:
-              type: string
-            spectators:
-              type: integer
-            stadium:
-              type: string
-            tournament:
-              type: string
     responses:
-      200:
-        description: Матч обновлен
-      404:
-        description: Матч не найден
+      200: Матч обновлен
+      404: Матч не найден
     """
     data = request.get_json()
     updated_match = update_match(match_id, data)
@@ -214,22 +89,49 @@ def modify_match(match_id):
         return jsonify(updated_match)
     return jsonify({"error": "Матч не найден"}), 404
 
+
+@matches_bp.route('/matches/<int:match_id>', methods=['PATCH'])
+def partially_modify_match(match_id):
+    """
+    Частичное обновление данных матча (PATCH)
+    ---
+    description: Обновляет только указанные поля.
+    parameters:
+      - in: path
+        name: match_id
+        required: true
+        type: integer
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          description: Поля для обновления
+          example:
+            spectators: 50000
+            stadium: "Газпром Арена"
+    responses:
+      200:
+        description: Частичное обновление успешно
+      404:
+        description: Матч не найден
+    """
+    fields = request.get_json()
+    updated_match = patch_match(match_id, fields)
+
+    if updated_match:
+        return jsonify(updated_match)
+    return jsonify({"error": "Матч не найден"}), 404
+
+
 @matches_bp.route('/matches/<int:match_id>', methods=['DELETE'])
 def remove_match(match_id):
     """
     Удалить матч
     ---
-    parameters:
-      - name: match_id
-        in: path
-        type: integer
-        required: true
-        example: 1
     responses:
-      200:
-        description: Матч удален
-      404:
-        description: Матч не найден
+      200: Матч удален
+      404: Матч не найден
     """
     match = get_match_by_id(match_id)
     if match:
@@ -237,50 +139,14 @@ def remove_match(match_id):
         return jsonify({"message": "Матч удален"})
     return jsonify({"error": "Матч не найден"}), 404
 
+
 @matches_bp.route('/matches/stats', methods=['GET'])
 def get_matches_stats():
     """
-    Получить статистику по матчам
+    Получить статистику по числовым полям
     ---
     responses:
-      200:
-        description: Статистика по числовым полям
-        schema:
-          type: object
-          properties:
-            home_score:
-              type: object
-              properties:
-                min:
-                  type: integer
-                max:
-                  type: integer
-                average:
-                  type: number
-                sum:
-                  type: integer
-            away_score:
-              type: object
-              properties:
-                min:
-                  type: integer
-                max:
-                  type: integer
-                average:
-                  type: number
-                sum:
-                  type: integer
-            spectators:
-              type: object
-              properties:
-                min:
-                  type: integer
-                max:
-                  type: integer
-                average:
-                  type: number
-                sum:
-                  type: integer
+      200: Статистика
     """
     stats = get_statistics()
     return jsonify(stats)

@@ -1,8 +1,3 @@
-"""
-Модуль для работы с данными футбольных матчей
-Содержит функции для CRUD операций и статистики
-"""
-
 # Начальные данные для демонстрации
 matches = [
     {
@@ -61,13 +56,26 @@ def add_match(match_data):
     return match_data
 
 def update_match(match_id, match_data):
-    """Обновить матч"""
+    """Полностью заменить запись матча"""
     for i, match in enumerate(matches):
         if match["id"] == match_id:
             match_data["id"] = match_id
             matches[i] = match_data
             return match_data
     return None
+
+def patch_match(match_id, fields):
+    """Частично обновить запись матча (PATCH)"""
+    match = get_match_by_id(match_id)
+    if not match:
+        return None
+
+    # Обновляем только переданные поля
+    for key, value in fields.items():
+        if key in match:
+            match[key] = value
+
+    return match
 
 def delete_match(match_id):
     """Удалить матч"""
